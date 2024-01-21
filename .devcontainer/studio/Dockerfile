@@ -1,22 +1,29 @@
-#-------------------------------------------------------------------------------------------------------------
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See LICENSE file in the project root for license information.
-#-------------------------------------------------------------------------------------------------------------
+FROM python:3.11-slim-bookworm
 
-FROM mcr.microsoft.com/vscode/devcontainers/python:3.10
-
-#
-# Update the OS and maybe install packages
-#
-ENV DEBIAN_FRONTEND=noninteractive
+# Update and install dependencies
 RUN apt-get update \
-   && apt-get upgrade -y  \
-   && apt-get -y install --no-install-recommends build-essential npm \
-   && apt-get autoremove -y \
-   && apt-get clean -y \
-   && rm -rf /var/lib/apt/lists/*
-ENV DEBIAN_FRONTEND=dialog
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        software-properties-common sudo\
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# For docs
-RUN npm install --global yarn
-RUN pip install pydoc-markdown
+# Setup a non-root user 'autogen' with sudo access
+RUN adduser --disabled-password --gecos '' autogen
+RUN adduser autogen sudo
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER autogen
+WORKDIR /home/autogen
+
+# Set environment variable if needed
+# ENV OPENAI_API_KEY="{OpenAI-API-Key}"
+
+# Install Python packages
+RUN pip install --upgrade pip
+RUN pip install pyautogen[teachable,lmm,retrievechat,mathchat,blendsearch] autogenra
+RUN pip install numpy pandas matplotlib seaborn scikit-learn requests urllib3 nltk pillow pytest beautifulsoup4
+
+# Expose port
+EXPOSE 8081
+
+# Start Command
+CMD ["/bin/bash"]
