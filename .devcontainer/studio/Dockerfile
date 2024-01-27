@@ -4,6 +4,8 @@ FROM python:3.11-slim-bookworm
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         software-properties-common sudo\
+    && apt-get -y install --no-install-recommends build-essential npm \
+    && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
