@@ -107,7 +107,7 @@ class ConversableAgent(Agent):
                     If False, the code will be executed in the current environment.
                     We strongly recommend using docker for code execution.
                 - timeout (Optional, int): The maximum execution time in seconds.
-                - last_n_messages (Experimental, Optional, int or str): The number of messages to look back for code execution. Default to 1. If set to 'auto', it will scan backwards through all messages arriving since the agent last spoke (typically this is the last time execution was attempted).
+                - last_n_messages (Experimental, Optional, int or str): The number of messages to look back for code execution. If set to 'auto', it will scan backwards through all messages arriving since the agent last spoke, which is typically the last time execution was attempted. (Default: auto)
             llm_config (dict or False): llm inference configuration.
                 Please refer to [OpenAIWrapper.create](/docs/reference/oai/client#create)
                 for available options.
@@ -759,16 +759,30 @@ class ConversableAgent(Agent):
         else:
             self._consecutive_auto_reply_counter[sender] = 0
 
-    def clear_history(self, agent: Optional[Agent] = None):
+    def clear_history(self, recipient: Optional[Agent] = None, nr_messages_to_preserve: Optional[int] = None):
         """Clear the chat history of the agent.
 
         Args:
-            agent: the agent with whom the chat history to clear. If None, clear the chat history with all agents.
+            recipient: the agent with whom the chat history to clear. If None, clear the chat history with all agents.
+            nr_messages_to_preserve: the number of newest messages to preserve in the chat history.
         """
-        if agent is None:
-            self._oai_messages.clear()
+        if recipient is None:
+            if nr_messages_to_preserve:
+                for key in self._oai_messages:
+                    # Remove messages from history except last `nr_messages_to_preserve` messages.
+                    self._oai_messages[key] = self._oai_messages[key][-nr_messages_to_preserve:]
+            else:
+                self._oai_messages.clear()
         else:
-            self._oai_messages[agent].clear()
+            self._oai_messages[recipient].clear()
+            if nr_messages_to_preserve:
+                print(
+                    colored(
+                        "WARNING: `nr_preserved_messages` is ignored when clearing chat history with a specific agent.",
+                        "yellow",
+                    ),
+                    flush=True,
+                )
 
     def generate_oai_reply(
         self,
@@ -839,7 +853,10 @@ class ConversableAgent(Agent):
             return False, None
         if messages is None:
             messages = self._oai_messages[sender]
-        last_n_messages = code_execution_config.pop("last_n_messages", 1)
+        last_n_messages = code_execution_config.pop("last_n_messages", "auto")
+
+        if not (isinstance(last_n_messages, (int, float)) and last_n_messages >= 0) and last_n_messages != "auto":
+            raise ValueError("last_n_messages must be either a non-negative integer, or the string 'auto'.")
 
         messages_to_scan = last_n_messages
         if last_n_messages == "auto":
