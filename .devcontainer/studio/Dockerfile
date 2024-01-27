@@ -14,6 +14,10 @@ RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER autogen
 WORKDIR /home/autogen
 
+# For docs
+RUN npm install --global yarn
+RUN pip install pydoc-markdown
+
 # Set environment variable if needed
 # ENV OPENAI_API_KEY="{OpenAI-API-Key}"
 
@@ -21,6 +25,7 @@ WORKDIR /home/autogen
 RUN pip install --upgrade pip
 RUN pip install pyautogen[teachable,lmm,retrievechat,mathchat,blendsearch] autogenra
 RUN pip install numpy pandas matplotlib seaborn scikit-learn requests urllib3 nltk pillow pytest beautifulsoup4
+
 
 # Expose port
 EXPOSE 8081
